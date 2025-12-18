@@ -1,0 +1,33 @@
+name: Supabase Keep-Alive  # 注意：这个名称会在 Actions 页面显示
+
+on:
+  schedule:
+    # 每天 UTC 时间 00:00 和 12:00 运行
+    - cron: '0 0,12 * * *'
+    
+    # 每6小时运行一次
+    - cron: '0 */6 * * *'
+  
+  # ⭐ 确保这一行存在！这是手动触发器的关键 ⭐
+  workflow_dispatch:
+    inputs:
+      log_level:
+        description: '日志级别'
+        required: false
+        default: 'info'
+  
+  # 推送代码时也运行（测试用）
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'scripts/**'
+      - '.github/workflows/**'
+      - 'package.json'
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📚 检出代码
+        uses: actions/checkout@v4
