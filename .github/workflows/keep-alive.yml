@@ -42,7 +42,7 @@ jobs:
       - name: 📦 安装依赖
         run: |
           echo "开始安装依赖..."
-          npm ci
+          npm install
           echo "依赖安装完成"
           
       - name: 🔨 编译 TypeScript
