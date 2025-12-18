@@ -1,0 +1,82 @@
+name: Supabase Keep-Alive
+
+on:
+  schedule:
+    # 每天 UTC 时间 00:00 和 12:00 运行（北京时间 8:00 和 20:00）
+    - cron: '0 0,12 * * *'
+    
+    # 额外：每6小时运行一次（更保险）
+    - cron: '0 */6 * * *'
+  
+  # 允许手动触发
+  workflow_dispatch:
+    inputs:
+      log_level:
+        description: '日志级别'
+        required: false
+        default: 'info'
+  
+  # 推送代码时也运行（测试用）
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'scripts/**'
+      - '.github/workflows/**'
+      - 'package.json'
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: 📚 检出代码
+        uses: actions/checkout@v4
+        
+      - name: ⎔ 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: 📦 安装依赖
+        run: |
+          npm ci
+          npm list @supabase/supabase-js
+          
+      - name: 🔨 编译 TypeScript
+        run: |
+          npx tsc --version
+          npm run build
+          echo "编译完成，文件列表:"
+          ls -la scripts/
+          
+      - name: 🧪 测试脚本
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          echo "测试环境变量..."
+          echo "URL 前10位: ${NEXT_PUBLIC_SUPABASE_URL:0:10}"
+          
+          # 测试脚本是否能正常启动
+          node scripts/keep-alive.js --help 2>&1 || true
+          
+      - name: 🚀 运行保活脚本
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          echo "开始运行保活脚本..."
+          echo "当前时间: $(date)"
+          echo "环境变量已设置: $([ -n \"$NEXT_PUBLIC_SUPABASE_URL\" ] && echo \"是\" || echo \"否\")"
+          
+          # 运行保活脚本
+          node scripts/keep-alive.js
+          
+      - name: ✅ 验证执行结果
+        if: always()
+        run: |
+          echo "保活任务执行完成"
+          echo "执行时间: $(date)"
+          echo "作业状态: ${{ job.status }}"
