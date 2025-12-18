@@ -1,4 +1,4 @@
-name: Supabase Keep-Alive  # 注意：这个名称会在 Actions 页面显示
+name: Supabase Keep-Alive
 
 on:
   schedule:
@@ -8,7 +8,7 @@ on:
     # 每6小时运行一次
     - cron: '0 */6 * * *'
   
-  # ⭐ 确保这一行存在！这是手动触发器的关键 ⭐
+  # 手动触发器
   workflow_dispatch:
     inputs:
       log_level:
@@ -27,7 +27,55 @@ on:
 jobs:
   keep-alive:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     
     steps:
       - name: 📚 检出代码
         uses: actions/checkout@v4
+        
+      - name: ⎔ 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: 📦 安装依赖
+        run: |
+          echo "开始安装依赖..."
+          npm ci
+          echo "依赖安装完成"
+          
+      - name: 🔨 编译 TypeScript
+        run: |
+          echo "编译 TypeScript..."
+          npx tsc --version
+          npm run build
+          echo "编译完成"
+          
+      - name: 🧪 测试脚本
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          echo "测试环境变量..."
+          echo "URL 前10位: ${NEXT_PUBLIC_SUPABASE_URL:0:10}"
+          
+      - name: 🚀 运行保活脚本
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          echo "开始运行保活脚本..."
+          echo "当前时间: $(date)"
+          echo "环境变量已设置: $([ -n \"$NEXT_PUBLIC_SUPABASE_URL\" ] && echo \"是\" || echo \"否\")"
+          
+          # 运行保活脚本
+          cd scripts
+          node keep-alive.js
+          
+      - name: ✅ 验证执行结果
+        if: always()
+        run: |
+          echo "保活任务执行完成"
+          echo "执行时间: $(date)"
+          echo "作业状态: ${{ job.status }}"
